@@ -91,34 +91,50 @@ void block_scatter_matrix(int **matrix,int row,int col,int block_size,int **Bufe
     }
 }   
 
-void preprocessing_matrix(int **matrix,int block_size,int row,int col){
+void preprocessing_matrix(int **left,int **left_Buf,int left_r,int left_c,int **right,int **right_Buf,int right_r,int right_c,int block_size,int rank){
+    MPI_Status status;
+    int row_i = rank/block_size;
+    int col_i = rank%block_size;
+
+    for(int i = 0;i <row_i; i++){
+        MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
+                 left_Buf,left_r*left_c,MPI_INT,get_right_index(rank,block_size),102,MPI_COMM_WORLD,&status);
+        memcpy(left,left_Buf,left_r*left_c*sizeof(int));
+    }
+
+    for(int j = 0;j <col_i; j++){
+        MPI_Sendrecv(right,right_r*right_c,MPI_INT,get_up_index(rank,block_size),103,
+                 right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
+        memcpy(right,right_Buf,right_r*right_c*sizeof(int));
+    }
 
 }
 
 
 int get_left_index(int current_rank,int block_size){
     int row = current_rank/block_size;
-    int col = current_rank&block_size;
+    int col = current_rank%block_size;
     return row*block_size + (col - 1)%current_rank;
 }
 
 int get_right_index(int current_rank,int block_size){
     int row = current_rank/block_size;
-    int col = current_rank&block_size;
+    int col = current_rank%block_size;
     return row*block_size + (col + 1)%current_rank;
 }
 
 int get_up_index(int current_rank,int block_size){
     int row = current_rank/block_size;
-    int col = current_rank&block_size;
+    int col = current_rank%block_size;
     return ((row-1)%block_size)*block_size + col;
 }
 
 int get_down_index(int current_rank,int block_size){
     int row = current_rank/block_size;
-    int col = current_rank&block_size;
+    int col = current_rank%block_size;
     return ((row+1)%block_size)*block_size + col;
 }
+
 void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **right_Buf,int right_r,int right_c,int **result,int block_size,int rank){//each step recesend//computer
     MPI_Status status;
     memset(result,0,sizeof(result));
@@ -133,8 +149,8 @@ void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **ri
                  right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
 
                  //copy data;
-        memcpy(left,left_Buf,left_r**left_c*sizeof(int));
-        memcpy(right,right_Buf,right_r**right_c*sizeof(int));
+        memcpy(left,left_Buf,left_r*left_c*sizeof(int));
+        memcpy(right,right_Buf,right_r*right_c*sizeof(int));
     }
 
     MPI_Send(result,left_r*right_c,MPI_INT,0,104,MPI_COMM_WORLD);
@@ -142,11 +158,14 @@ void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **ri
 
 void gather_matrix(int **result,int row,int col,int block_size){
     MPI_Status status;
+    int **temp = generate_space(row,col);
     for(int i = 0;i<block_size;i++){
         for(int j = 0;j<block_size;j++){
-            
+            MPI_Recv(temp,row*col,MPI_INT,i*block_size+j,104,MPI_COMM_WORLD,&status);
+            Set_block(i*block_size,j*block_size,row,col,result,temp);
         }
     }
+    printf("gathering done\n");
 }
 
 int main(int argv,char** argc){
@@ -197,15 +216,19 @@ int main(int argv,char** argc){
 
     MPI_Barrier(MPI_COMM_WORLD);//sync
 
+    preprocessing_matrix(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,block_size,rank);
+
+    MPI_Barrier(MPI_COMM_WORLD);//sync
+    
     Cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     if(rank == 0){
-        gather_matrix();//gathering the result
+        gather_matrix(result,matrix1_row1,matrix2_col,block_size);//gathering the result
+        print_matrx(result,ROW1,COL2);
     }
 
-    print_matrx(C,ROW1,COL2);
-
-
+    MPI_Finalize();
+    return 0;
 }
