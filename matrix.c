@@ -70,6 +70,14 @@ int** get_block(int row_i,int col_i,int row,int col,int **matrix){//index//size 
     return temp;
 }
 
+void Set_block(int row_i,int col_i,int row,int col,int **result,int **small){
+    for(int i = row_i,int t1 = 0;i < row_i + row;i++,t1++){
+        for(int j = col_i,int t2 = 0;j < col + col_i;j++,t2++){
+            result[i][j] = small[t1][t2];
+        }
+    }
+}
+
 void block_scatter_matrix(int **matrix,int row,int col,int block_size,int **Bufer,int tag){//size block
     for(int i = 0;i <block_size; i++){
         for(int j = 0;j < block_size;j++){
@@ -86,6 +94,7 @@ void block_scatter_matrix(int **matrix,int row,int col,int block_size,int **Bufe
 void preprocessing_matrix(int **matrix,int block_size,int row,int col){
 
 }
+
 
 int get_left_index(int current_rank,int block_size){
     int row = current_rank/block_size;
@@ -112,6 +121,7 @@ int get_down_index(int current_rank,int block_size){
 }
 void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **right_Buf,int right_r,int right_c,int **result,int block_size,int rank){//each step recesend//computer
     MPI_Status status;
+    memset(result,0,sizeof(result));
     for(int i = 0;i < block_size;i++){
         matrix_multiple(left,right,result,left_r,left_c,right_r,right_c);
 
@@ -123,6 +133,19 @@ void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **ri
                  right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
 
                  //copy data;
+        memcpy(left,left_Buf,left_r**left_c*sizeof(int));
+        memcpy(right,right_Buf,right_r**right_c*sizeof(int));
+    }
+
+    MPI_Send(result,left_r*right_c,MPI_INT,0,104,MPI_COMM_WORLD);
+}
+
+void gather_matrix(int **result,int row,int col,int block_size){
+    MPI_Status status;
+    for(int i = 0;i<block_size;i++){
+        for(int j = 0;j<block_size;j++){
+            
+        }
     }
 }
 
@@ -149,8 +172,8 @@ int main(int argv,char** argc){
     matrix_multiple(matrix1,matrix2,result,ROW1,COL1,ROW2,COL2);//calculate time
     print_matrx(result,ROW1,COL2)
 
-    preprocessing_matrix(matrix1,block_size,ROW1,COL1);//shift to left and up
-    preprocessing_matrix(matrix2,block_size,ROW2,COL2);//may be slower than communication
+    //preprocessing_matrix(matrix1,block_size,ROW1,COL1);//shift to left and up
+    //preprocessing_matrix(matrix2,block_size,ROW2,COL2);//may be slower than communication
 
     int matrix1_row = ROW1/block_size;
     int matrix1_col = COL1/block_size;
@@ -174,13 +197,15 @@ int main(int argv,char** argc){
 
     MPI_Barrier(MPI_COMM_WORLD);//sync
 
-    Cannon(); // do computing and shifting
+    Cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     if(rank == 0){
         gather_matrix();//gathering the result
     }
+
+    print_matrx(C,ROW1,COL2);
 
 
 }
