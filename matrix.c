@@ -3,121 +3,129 @@
 #include<stdlib.h>
 #include <time.h>
 #include <stdlib.h>
-#define ROW1 3
-#define COL1 3
-#define ROW2 3
-#define COL2 3
+#define ROW1 9
+#define COL1 9
+#define ROW2 9
+#define COL2 9
 
 //cache effiency
-int **generate_space(int row,int col){
-    int **matrix = (int **)malloc(sizeof(int *)* row);
-    int i = 0;
-    for(;i < row;i++){
-        matrix[i] = (int *)malloc(sizeof(int)*col);
-    }
+int *generate_space(int row,int col){
+    int *matrix = (int*)calloc(row*col,sizeof(int));;
     return matrix;
 }
 
-int** generate_matrix(int row,int col,int range){
-    int **matrix = generate_space(row,col);
+int* generate_matrix(int row,int col,int range){
+    int *matrix = generate_space(row,col);
     srand(time(NULL) + rand());
     int i = 0;
     int j = 0;
-    for(;i < row;i++){
-        for(;j < col;j++){
-            matrix[i][j] = rand()%range;
+    for(i=0;i < row;i++){
+        for(j=0;j < col;j++){
+            matrix[i*col + j] = rand()%range;
         }
     }
     return matrix;
 }
 
-void print_matrx(int **a,int row,int col)
+int get_value(int *matrix,int i,int j,int col){
+    return matrix[i*col+j];
+}
+
+void set_value(int *matrix,int i,int j,int col,int value){
+    matrix[i*col + j] = value;
+}
+
+void addc_value(int *matrix,int i,int j,int col,int value){
+    matrix[i*col + j] += value;
+}
+void print_matrx(int *a,int row,int col)
 {
-    int i = 0;
-    int j = 0;
-    for(; i < row; i++)
+    int i;
+    int j;
+    for(i=0; i < row; i++)
     {
-        for(; j < col; j++)
+        for(j=0; j < col; j++)
         {
-            printf("%d ",a[i][j]);
+            printf("%d ",a[i*col + j]);
         }
         printf("\n");
     }
     printf("\n");
 }
 
-void matrix_multiple(int **left, int **right,int **result,int row1,int col1,int row2,int col2){
-    if(col1 != row2){
-        return;
-    }
 
-    //int **result = generate_space(row1,col2);
-    //memset(result,0,sizeof(result));
-    int i = 0;
-    int j = 0;
-    int k = 0;
-    for(;i < row1;i++){
-        for(;j < col2;j++){
-            for(;k < row2;k++){
-                result[i][j] += left[i][k] * right[k][j];//this may be slow because the memory is not continuous//cache usage
+void matrix_multiple(int* A,int *B,int *C,int row1,int col1,int col2){
+    int i=0,j=0,k=0;
+    int* tmp_C=(int*)malloc(row1*col2*sizeof(int));
+    memset(tmp_C,0,sizeof(int)*row1*col2);
+     
+    for(i=0;i<row1;i++){
+        for(j=0;j<col2;j++){
+            for(k=0;k<col1;k++){
+                addc_value(tmp_C,i,j,col2,get_value(A,i,k,col1)*get_value(B,k,j,col2));
             }
-        }
-    }
+            addc_value(C,i,j,col2,get_value(tmp_C,i,j,col2));
+        }      
+    } 
 }
 
-int** get_block(int row_i,int col_i,int row,int col,int **matrix){//index//size of block
-    int **temp = generate_space(row,col);
+int* get_block(int row_i,int col_i,int row,int col,int *matrix,int lencol){//index//size of block//len of big
+    int *temp = generate_space(row,col);
     int i = row_i;
     int t1 = 0;
     int j = col_i;
     int t2 = 0;
-    for(;i < row_i + row;i++,t1++){
-        for(;j < col + col_i;j++,t2++){
-            temp[t1][t2] = matrix[i][j];
+    for(i = row_i,t1=0;i < row_i + row;i++,t1++){
+        for(j = col_i,t2=0;j < col + col_i;j++,t2++){
+            //temp[t1*row + t2] = matrix[i*lenrow + j];
+            set_value(temp,t1,t2,col,get_value(matrix,i,j,lencol));
         }
     }
     return temp;
 }
 
-void Set_block(int row_i,int col_i,int row,int col,int **result,int **small){
+void Set_block(int row_i,int col_i,int row,int col,int *result,int *small,int lencol){
     int i = row_i;
     int t1 = 0;
     int j = col_i;
     int t2 = 0;
-    for(;i < row_i + row;i++,t1++){
-        for(;j < col + col_i;j++,t2++){
-            result[i][j] = small[t1][t2];
+    for(i = row_i,t1=0;i < row_i + row;i++,t1++){
+        for(j = col_i,t2=0;j < col + col_i;j++,t2++){
+            //result[i][j] = small[t1][t2];
+            set_value(result,i,j,lencol,get_value(small,t1,t2,col));
         }
     }
 }
 
-void block_scatter_matrix(int **matrix,int row,int col,int block_size,int **Bufer,int tag){//size block
+void block_scatter_matrix(int *matrix,int row,int col,int block_size,int *Bufer,int tag,int lencol){//size block
     int i = 0;
     int j = 0;
-    for(;i <block_size; i++){
-        for(;j < block_size;j++){
+    int row_small = row/block_size;
+    int col_small = col/block_size;
+    for(i=0;i <block_size; i++){
+        for(j=0;j < block_size;j++){
             if(i==0&&j==0){
-                memcpy(Bufer,get_block(i,j,row,col,matrix),row*col*sizeof(int));
+                memcpy(Bufer,get_block(i*row_small,j*col_small,row,col,matrix,lencol),row*col*sizeof(int));
             } 
             else{
-                MPI_Send(get_block(i,j,row,col,matrix),row*col,MPI_INT,i*block_size + j,tag,MPI_COMM_WORLD);
+                MPI_Send(get_block(i*row_small,j*col_small,row,col,matrix),row*col,MPI_INT,i*block_size + j,tag,MPI_COMM_WORLD);
             }
         }
     }
 }   
 
-void preprocessing_matrix(int **left,int **left_Buf,int left_r,int left_c,int **right,int **right_Buf,int right_r,int right_c,int block_size,int rank){
+void preprocessing_matrix(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_Buf,int right_r,int right_c,int block_size,int rank){
     MPI_Status status;
     int row_i = rank/block_size;
     int col_i = rank%block_size;
     int i = 0;
-    for(;i <row_i; i++){
+    for(i=0;i <row_i; i++){
         MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
                  left_Buf,left_r*left_c,MPI_INT,get_right_index(rank,block_size),102,MPI_COMM_WORLD,&status);
         memcpy(left,left_Buf,left_r*left_c*sizeof(int));
     }
     int j = 0;
-    for(;j <col_i; j++){
+    for(j=0;j <col_i; j++){
         MPI_Sendrecv(right,right_r*right_c,MPI_INT,get_up_index(rank,block_size),103,
                  right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
         memcpy(right,right_Buf,right_r*right_c*sizeof(int));
@@ -150,11 +158,11 @@ int get_down_index(int current_rank,int block_size){
     return ((row+1)%block_size)*block_size + col;
 }
 
-void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **right_Buf,int right_r,int right_c,int **result,int block_size,int rank){//each step recesend//computer
+void cannon(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_Buf,int right_r,int right_c,int *result,int block_size,int rank){//each step recesend//computer
     MPI_Status status;
     memset(result,0,sizeof(result));
     int i = 0;
-    for(;i < block_size;i++){
+    for(i=0;i < block_size;i++){
         matrix_multiple(left,right,result,left_r,left_c,right_r,right_c);
 
         MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
@@ -172,15 +180,17 @@ void cannon(int **left,int **left_Buf,int left_r,int left_c,int **right,int **ri
     MPI_Send(result,left_r*right_c,MPI_INT,0,104,MPI_COMM_WORLD);
 }
 
-void gather_matrix(int **result,int row,int col,int block_size){
+void gather_matrix(int *result,int row,int col,int block_size,int lencol){
     MPI_Status status;
-    int **temp = generate_space(row,col);
+    int *temp = generate_space(row,col);
     int i = 0;
     int j = 0;
-    for(;i<block_size;i++){
-        for(;j<block_size;j++){
+    int row_small = row/block_size;
+    int col_small = col/block_size;
+    for(i=0;i<block_size;i++){
+        for(j=0;j<block_size;j++){
             MPI_Recv(temp,row*col,MPI_INT,i*block_size+j,104,MPI_COMM_WORLD,&status);
-            Set_block(i*block_size,j*block_size,row,col,result,temp);
+            Set_block(i*row_small,j*col_small,row,col,result,temp,lencol);
         }
     }
     printf("gathering done\n");
@@ -198,9 +208,9 @@ int main(int argc,char** argv){
         printf("we have %d process\n",size);
     int block_size = sqrt(size);
     
-    int **matrix1;
-    int **matrix2;
-    int **result;
+    int *matrix1;
+    int *matrix2;
+    int *result;
     if(rank == 0){
         matrix1 = generate_matrix(ROW1,COL1,20);
         matrix2 = generate_matrix(ROW2,COL2,10);
@@ -217,21 +227,21 @@ int main(int argc,char** argv){
 
     //preprocessing_matrix(matrix1,block_size,ROW1,COL1);//shift to left and up
     //preprocessing_matrix(matrix2,block_size,ROW2,COL2);//may be slower than communication
-    /*
+    
     int matrix1_row = ROW1/block_size;
     int matrix1_col = COL1/block_size;
     int matrix2_row = matrix1_col;
     int matrix2_col = COL2/block_size;
 
-    int **A = generate_space(matrix1_row,matrix1_col);//
-    int **B = generate_space(matrix2_row,matrix2_col);
-    int **C = generate_space(matrix1_row,matrix2_col);
-    int **A_Buf = generate_space(matrix1_row,matrix1_col);//buffer for communication
-    int **B_Buf = generate_space(matrix2_row,matrix2_col);
+    int *A = generate_space(matrix1_row,matrix1_col);//
+    int *B = generate_space(matrix2_row,matrix2_col);
+    int *C = generate_space(matrix1_row,matrix2_col);
+    int *A_Buf = generate_space(matrix1_row,matrix1_col);//buffer for communication
+    int *B_Buf = generate_space(matrix2_row,matrix2_col);
 
     if(rank == 0){
-        block_scatter_matrix(matrix1,matrix1_row,matrix1_col,block_size,A,100);
-        block_scatter_matrix(matrix2,matrix2_row,matrix2_col,block_size,B,101);//send i^th block to i^th node
+        block_scatter_matrix(matrix1,matrix1_row,matrix1_col,block_size,A,100,COL1);
+        block_scatter_matrix(matrix2,matrix2_row,matrix2_col,block_size,B,101,COL2);//send i^th block to i^th node
     }
     else{
         MPI_Recv(A,matrix1_row*matrix1_col,MPI_INT,0,100,MPI_COMM_WORLD,&status);
@@ -249,10 +259,10 @@ int main(int argc,char** argv){
     MPI_Barrier(MPI_COMM_WORLD);
 
     if(rank == 0){
-        gather_matrix(result,matrix1_row,matrix2_col,block_size);//gathering the result
+        gather_matrix(result,matrix1_row,matrix2_col,block_size,COL2);//gathering the result
         print_matrx(result,ROW1,COL2);
     }
-    */
+    
     MPI_Finalize();
     return 0;
 }
