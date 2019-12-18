@@ -3,10 +3,10 @@
 #include<stdlib.h>
 #include <time.h>
 #include <stdlib.h>
-#define ROW1 9
-#define COL1 9
-#define ROW2 9
-#define COL2 9
+#define ROW1 400
+#define COL1 400
+#define ROW2 400
+#define COL2 400
 
 //cache effiency
 int *generate_space(int row,int col){
@@ -100,15 +100,13 @@ void Set_block(int row_i,int col_i,int row,int col,int *result,int *small,int le
 void block_scatter_matrix(int *matrix,int row,int col,int block_size,int *Bufer,int tag,int lencol){//size block
     int i = 0;
     int j = 0;
-    int row_small = row/block_size;
-    int col_small = col/block_size;
     for(i=0;i <block_size; i++){
         for(j=0;j < block_size;j++){
             if(i==0&&j==0){
-                memcpy(Bufer,get_block(i*row_small,j*col_small,row,col,matrix,lencol),row*col*sizeof(int));
+                memcpy(Bufer,get_block(i*row,j*col,row,col,matrix,lencol),row*col*sizeof(int));
             } 
             else{
-                MPI_Send(get_block(i*row_small,j*col_small,row,col,matrix),row*col,MPI_INT,i*block_size + j,tag,MPI_COMM_WORLD);
+                MPI_Send(get_block(i*row,j*col,row,col,matrix,lencol),row*col,MPI_INT,i*block_size + j,tag,MPI_COMM_WORLD);
             }
         }
     }
@@ -137,19 +135,19 @@ void preprocessing_matrix(int *left,int *left_Buf,int left_r,int left_c,int *rig
 int get_left_index(int current_rank,int block_size){
     int row = current_rank/block_size;
     int col = current_rank%block_size;
-    return row*block_size + (col - 1)%current_rank;
+    return row*block_size + (col - 1 + block_size)%block_size;
 }
 
 int get_right_index(int current_rank,int block_size){
     int row = current_rank/block_size;
     int col = current_rank%block_size;
-    return row*block_size + (col + 1)%current_rank;
+    return row*block_size + (col + 1)%block_size;
 }
 
 int get_up_index(int current_rank,int block_size){
     int row = current_rank/block_size;
     int col = current_rank%block_size;
-    return ((row-1)%block_size)*block_size + col;
+    return ((row-1 +block_size)%block_size)*block_size + col;
 }
 
 int get_down_index(int current_rank,int block_size){
@@ -163,7 +161,7 @@ void cannon(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_
     memset(result,0,sizeof(result));
     int i = 0;
     for(i=0;i < block_size;i++){
-        matrix_multiple(left,right,result,left_r,left_c,right_r,right_c);
+        matrix_multiple(left,right,result,left_r,left_c,right_c);
 
         MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
                  left_Buf,left_r*left_c,MPI_INT,get_right_index(rank,block_size),102,MPI_COMM_WORLD,&status);
@@ -176,8 +174,8 @@ void cannon(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_
         memcpy(left,left_Buf,left_r*left_c*sizeof(int));
         memcpy(right,right_Buf,right_r*right_c*sizeof(int));
     }
-
-    MPI_Send(result,left_r*right_c,MPI_INT,0,104,MPI_COMM_WORLD);
+    if(rank != 0)
+        MPI_Send(result,left_r*right_c,MPI_INT,0,104,MPI_COMM_WORLD);
 }
 
 void gather_matrix(int *result,int row,int col,int block_size,int lencol){
@@ -185,15 +183,18 @@ void gather_matrix(int *result,int row,int col,int block_size,int lencol){
     int *temp = generate_space(row,col);
     int i = 0;
     int j = 0;
-    int row_small = row/block_size;
-    int col_small = col/block_size;
+    //int row_small = row/block_size;
+    //int col_small = col/block_size;
     for(i=0;i<block_size;i++){
         for(j=0;j<block_size;j++){
-            MPI_Recv(temp,row*col,MPI_INT,i*block_size+j,104,MPI_COMM_WORLD,&status);
-            Set_block(i*row_small,j*col_small,row,col,result,temp,lencol);
+            int temp_rank = i*block_size+j;
+            if(temp_rank != 0){
+                MPI_Recv(temp,row*col,MPI_INT,temp_rank,104,MPI_COMM_WORLD,&status);
+                Set_block(i*row,j*col,row,col,result,temp,lencol);
+            }
         }
     }
-    printf("gathering done\n");
+    //printf("gathering done\n");
 }
 
 int main(int argc,char** argv){
@@ -211,18 +212,22 @@ int main(int argc,char** argv){
     int *matrix1;
     int *matrix2;
     int *result;
+    double s,e;
     if(rank == 0){
         matrix1 = generate_matrix(ROW1,COL1,20);
         matrix2 = generate_matrix(ROW2,COL2,10);
         result = generate_space(ROW1,COL2);
 
-        print_matrx(matrix1,ROW1,COL1);
-        printf("print1 done\n");
-        print_matrx(matrix2,ROW2,COL2);
-        printf("print2 done\n");
-        matrix_multiple(matrix1,matrix2,result,ROW1,COL1,ROW2,COL2);//calculate time
-        print_matrx(result,ROW1,COL2);
-        printf("print3 done\n");
+        //print_matrx(matrix1,ROW1,COL1);
+        //printf("print1 done\n");
+        //print_matrx(matrix2,ROW2,COL2);
+        //printf("print2 done\n");
+        s = MPI_Wtime();
+        matrix_multiple(matrix1,matrix2,result,ROW1,COL1,COL2);//calculate time
+        e = MPI_Wtime();
+        printf("normal take time %f \n",e-s);
+        //print_matrx(result,ROW1,COL2);
+        //printf("print3 done\n");
     }
 
     //preprocessing_matrix(matrix1,block_size,ROW1,COL1);//shift to left and up
@@ -240,6 +245,7 @@ int main(int argc,char** argv){
     int *B_Buf = generate_space(matrix2_row,matrix2_col);
 
     if(rank == 0){
+        s = MPI_Wtime();
         block_scatter_matrix(matrix1,matrix1_row,matrix1_col,block_size,A,100,COL1);
         block_scatter_matrix(matrix2,matrix2_row,matrix2_col,block_size,B,101,COL2);//send i^th block to i^th node
     }
@@ -248,19 +254,28 @@ int main(int argc,char** argv){
         MPI_Recv(B,matrix2_row*matrix2_col,MPI_INT,0,101,MPI_COMM_WORLD,&status);
     }
 
+    //printf("process: %d scatter done\n",rank);
+    //print_matrx(A,matrix1_row,matrix1_col);
+    //print_matrx(B,matrix2_row,matrix2_col);
     MPI_Barrier(MPI_COMM_WORLD);//sync
 
     preprocessing_matrix(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,block_size,rank);
 
+    //printf("process: %d preprocessing done\n",rank);
     MPI_Barrier(MPI_COMM_WORLD);//sync
 
     cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
 
+    //printf("process: %d cannon done\n",rank);
     MPI_Barrier(MPI_COMM_WORLD);
 
     if(rank == 0){
+        //printf("begin gathering\n");
+        Set_block(0,0,matrix1_row,matrix2_col,result,C,COL2);
         gather_matrix(result,matrix1_row,matrix2_col,block_size,COL2);//gathering the result
-        print_matrx(result,ROW1,COL2);
+        e = MPI_Wtime();
+        printf("cannon time %f \n",e-s);
+        //print_matrx(result,ROW1,COL2);
     }
     
     MPI_Finalize();
