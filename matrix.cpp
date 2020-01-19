@@ -3,11 +3,12 @@
 #include<stdlib.h>
 #include <time.h>
 #include <stdlib.h>
+#include <string.h>
 #include <iostream>
-#define ROW1 900
-#define COL1 900
-#define ROW2 900
-#define COL2 900
+#define ROW1 400
+#define COL1 400
+#define ROW2 400
+#define COL2 400
 
 //cache effiency
 int *generate_space(int row,int col){
@@ -43,7 +44,7 @@ void print_matrx(int *a,int row,int col)
     {
         for(int j=0; j < col; j++)
         {
-            std::cout<<a[i*col + j])<<" ";
+            std::cout<<a[i*col + j]<<" ";
         }
         std::cout<<"\n";
     }
@@ -118,24 +119,6 @@ void block_scatter_matrix(int *matrix,int row,int col,int block_size,int *Bufer,
     }
 }   
 
-void preprocessing_matrix(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_Buf,int right_r,int right_c,int block_size,int rank){
-    MPI_Status status;
-    int row_i = rank/block_size;
-    int col_i = rank%block_size;
-    for(int i=0;i <row_i; i++){
-        MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
-                 left_Buf,left_r*left_c,MPI_INT,get_right_index(rank,block_size),102,MPI_COMM_WORLD,&status);
-        memcpy(left,left_Buf,left_r*left_c*sizeof(int));
-    }
-    for(int j=0;j <col_i; j++){
-        MPI_Sendrecv(right,right_r*right_c,MPI_INT,get_up_index(rank,block_size),103,
-                 right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
-        memcpy(right,right_Buf,right_r*right_c*sizeof(int));
-    }
-
-}
-
-
 int get_left_index(int current_rank,int block_size){
     int row = current_rank/block_size;
     int col = current_rank%block_size;
@@ -158,6 +141,23 @@ int get_down_index(int current_rank,int block_size){
     int row = current_rank/block_size;
     int col = current_rank%block_size;
     return ((row+1)%block_size)*block_size + col;
+}
+
+void preprocessing_matrix(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_Buf,int right_r,int right_c,int block_size,int rank){
+    MPI_Status status;
+    int row_i = rank/block_size;
+    int col_i = rank%block_size;
+    for(int i=0;i <row_i; i++){
+        MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
+                 left_Buf,left_r*left_c,MPI_INT,get_right_index(rank,block_size),102,MPI_COMM_WORLD,&status);
+        memcpy(left,left_Buf,left_r*left_c*sizeof(int));
+    }
+    for(int j=0;j <col_i; j++){
+        MPI_Sendrecv(right,right_r*right_c,MPI_INT,get_up_index(rank,block_size),103,
+                 right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
+        memcpy(right,right_Buf,right_r*right_c*sizeof(int));
+    }
+
 }
 
 void cannon(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_Buf,int right_r,int right_c,int *result,int block_size,int rank){//each step recesend//computer
