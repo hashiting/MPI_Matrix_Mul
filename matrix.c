@@ -3,10 +3,10 @@
 #include<stdlib.h>
 #include <time.h>
 #include <stdlib.h>
-#define ROW1 400
-#define COL1 400
-#define ROW2 400
-#define COL2 400
+#define ROW1 900
+#define COL1 900
+#define ROW2 900
+#define COL2 900
 
 //cache effiency
 int *generate_space(int row,int col){
@@ -245,7 +245,7 @@ int main(int argc,char** argv){
     int *B_Buf = generate_space(matrix2_row,matrix2_col);
 
     if(rank == 0){
-        s = MPI_Wtime();
+        //s = MPI_Wtime();
         block_scatter_matrix(matrix1,matrix1_row,matrix1_col,block_size,A,100,COL1);
         block_scatter_matrix(matrix2,matrix2_row,matrix2_col,block_size,B,101,COL2);//send i^th block to i^th node
     }
@@ -263,11 +263,13 @@ int main(int argc,char** argv){
 
     //printf("process: %d preprocessing done\n",rank);
     MPI_Barrier(MPI_COMM_WORLD);//sync
-
+    if(rank == 0){
+        s = MPI_Wtime();
+    }
     cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
 
     //printf("process: %d cannon done\n",rank);
-    MPI_Barrier(MPI_COMM_WORLD);
+    //MPI_Barrier(MPI_COMM_WORLD);
 
     if(rank == 0){
         //printf("begin gathering\n");
