@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
-#define ROW1 400
-#define COL1 400
-#define ROW2 400
-#define COL2 400
+#define ROW1 420
+#define COL1 420
+#define ROW2 420
+#define COL2 420
 
 //cache effiency
 int *generate_space(int row,int col){
@@ -80,26 +80,28 @@ void matrix_multiple(int* A,int *B,int *C,int row1,int col1,int col2){
 
 int* get_block(int row_i,int col_i,int row,int col,int *matrix,int lencol){//index//size of block//len of big
     int *temp = generate_space(row,col);
-    int i = row_i;
-    int t1 = 0;
-    int j = col_i;
-    int t2 = 0;
-    for(;i < row_i + row;i++,t1++){
-        for(;j < col + col_i;j++,t2++){
+    int i;
+    int t1;
+    int j;
+    int t2;
+    for(i = row_i,t1=0;i < row_i + row;i++,t1++){
+        for(j= col_i,t2=0;j < col + col_i;j++,t2++){
             //temp[t1*row + t2] = matrix[i*lenrow + j];
             set_value(temp,t1,t2,col,get_value(matrix,i,j,lencol));
         }
     }
+    
+    //print_matrx(temp,2,2);
     return temp;
 }
 
 void Set_block(int row_i,int col_i,int row,int col,int *result,int *small,int lencol){
-    int i = row_i;
-    int t1 = 0;
-    int j = col_i;
-    int t2 = 0;
-    for(;i < row_i + row;i++,t1++){
-        for(;j < col + col_i;j++,t2++){
+    int i;
+    int t1;
+    int j;
+    int t2;
+    for(i=row_i,t1=0;i < row_i + row;i++,t1++){
+        for(j = col_i,t2=0;j < col + col_i;j++,t2++){
             //result[i][j] = small[t1][t2];
             set_value(result,i,j,lencol,get_value(small,t1,t2,col));
         }
@@ -220,7 +222,7 @@ int main(int argc,char** argv){
         matrix2 = generate_matrix(ROW2,COL2,10);
         result = generate_space(ROW1,COL2);
         result1 = generate_space(ROW1,COL2);
-        //print_matrx(matrix1,ROW1,COL1);
+       // print_matrx(matrix1,ROW1,COL1);
         //printf("print1 done\n");
         //print_matrx(matrix2,ROW2,COL2);
         //printf("print2 done\n");
