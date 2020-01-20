@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
-#define ROW1 400
-#define COL1 400
-#define ROW2 400
-#define COL2 400
+#define ROW1 1000
+#define COL1 1000
+#define ROW2 1000
+#define COL2 1000
 
 //cache effiency
 int *generate_space(int row,int col){
@@ -228,10 +228,10 @@ int main(int argc,char** argv){
         matrix2 = generate_matrix(ROW2,COL2,10);
         result = generate_space(ROW1,COL2);
         result1 = generate_space(ROW1,COL2);
-        print_matrx(matrix1,ROW1,COL1);
-        printf("print1 done\n");
-        print_matrx(matrix2,ROW2,COL2);
-        printf("print2 done\n");
+        //print_matrx(matrix1,ROW1,COL1);
+        //printf("print1 done\n");
+        //print_matrx(matrix2,ROW2,COL2);
+        //printf("print2 done\n");
         s = MPI_Wtime();
         matrix_multiple(matrix1,matrix2,result1,ROW1,COL1,COL2);//calculate time
         e = MPI_Wtime();
@@ -263,24 +263,25 @@ int main(int argc,char** argv){
     MPI_Scatter(matrix2,matrix2_row*matrix2_col, MPI_INT, B,
             matrix2_row*matrix2_col, MPI_INT, 0, MPI_COMM_WORLD);        
 
-    printf("process: %d scatter done\n",rank);
-    print_matrx(A,matrix1_row,matrix1_col);
-    print_matrx(B,matrix2_row,matrix2_col);
-    MPI_Barrier(MPI_COMM_WORLD);//sync
+    //printf("process: %d scatter done\n",rank);
+    //print_matrx(A,matrix1_row,matrix1_col);
+    //print_matrx(B,matrix2_row,matrix2_col);
+    //MPI_Barrier(MPI_COMM_WORLD);//sync
     //printf("process: %d preprocessing done\n",rank);
     cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
 
     //printf("process: %d cannon done\n",rank);
     //MPI_Barrier(MPI_COMM_WORLD);
-    MPI_Gather(C, matrix1_row*matrix2_col, MPI_INT, result1, 1, MPI_INT, 0,
+    MPI_Gather(C, matrix1_row*matrix2_col, MPI_INT, result, matrix1_row*matrix2_col, MPI_INT, 0,
            MPI_COMM_WORLD);
+    //MPI_Barrier(MPI_COMM_WORLD);
     if(rank == 0){
         //printf("begin gathering\n");
         //Set_block(0,0,matrix1_row,matrix2_col,result,C,COL2);
         //gather_matrix(result,matrix1_row,matrix2_col,block_size,COL2);//gathering the result
         e = MPI_Wtime();
         std::cout<<"cannon time "<<e-s<< "\n";
-        print_matrx(result,size,matrix1_row*matrix2_col);
+        //print_matrx(result,size,matrix1_row*matrix2_col);
         if(validate(result,result1,ROW1,COL2)){
             std::cout<<"successfully compute\n";
         }
