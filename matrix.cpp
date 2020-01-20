@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
-#define ROW1 420
-#define COL1 420
-#define ROW2 420
-#define COL2 420
+#define ROW1 400
+#define COL1 400
+#define ROW2 400
+#define COL2 400
 
 //cache effiency
 int *generate_space(int row,int col){
