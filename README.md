@@ -1,47 +1,48 @@
-# MPI_pro
-Pro using MPI
+# MPI_matrix_Mul
 
-dimension of matrix is 100 * 100:
-    
-    normal: 0.014s
-    
-    4-process:0.0039s
-    
-    16-process:0.00179s
-    
-    25-process: 0.0019s
+Matrix mul using MPI
 
-dimension of matrix is 256 * 256:
+Dimension of matrix is 840*840:
 
-    normal method:0.258287 
+    normal time: 8.5
     
-    4-process cannon:0.058600
+    4-process:2.13
     
-    16-process cannon:0.018291
+    9-process:0.96
+    
+    16-process:0.558
+    
+    25-process:0.505
+    
+    36-process:0.318
+    
+    49-process:0.179
+    
+    64-process:0.20
+    
+    100-process:0.28
+    
+    144-process 0.38
     
 
-dimension of matrix is 400 * 400:
 
-    normal method:0.933232 
-    
-    4-process cannon:0.223899
-    
-    16-process cannon: 0.06411
-    
-    25-process cannon:0.045077 
+Dimension of matrix is 1000 * 1000:
 
-dimension of matrix is 900 * 900:
-
-    normal: 10.9s
-
-    81-process:0.521s
+    normal: 15.2s
     
-dimension of matrix is 1000 * 1000:
-
-    normal: 13.73s
+    4-process:3.46s
     
-    16-process: 1.03s
+    16-process: 0.93s
     
-    100-process: 0.69s
+    25-process: 0.608s
+    
+    64-process: 0.381s
+    
+    100-process: 0.267s
+    
+    400-process: 0.647s
+    
+    
+    
 
 It has strong scalility.
