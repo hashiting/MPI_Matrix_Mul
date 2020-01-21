@@ -10,7 +10,7 @@
 #define ROW2 1000
 #define COL2 1000
 
-//cache effiency
+
 int *generate_space(int row,int col){
     int *matrix = (int*)calloc(row*col,sizeof(int));;
     return matrix;
@@ -79,42 +79,15 @@ void matrix_multiple(int* A,int *B,int *C,int row1,int col1,int col2){
     free(tmp_C); 
 }
 
-int* get_block(int row_i,int col_i,int row,int col,int *matrix,int lencol){//index//size of block//len of big
-    int *temp = generate_space(row,col);
-    int i,t1,j,t2;
-    for(i = row_i,t1=0;i < row_i + row;i++,t1++){
-        for(j= col_i,t2=0;j < col + col_i;j++,t2++){
-            //temp[t1*row + t2] = matrix[i*lenrow + j];
-            set_value(temp,t1,t2,col,get_value(matrix,i,j,lencol));
-        }
-    }
-    
-    //print_matrx(temp,2,2);
-    return temp;
-}
 
 void Set_block(int row_i,int col_i,int row,int col,int *result,int *small,int lencol){
     int i,t1,j,t2;
     for(i=row_i,t1=0;i < row_i + row;i++,t1++){
         for(j = col_i,t2=0;j < col + col_i;j++,t2++){
-            //result[i][j] = small[t1][t2];
             set_value(result,i,j,lencol,get_value(small,t1,t2,col));
         }
     }
-}
-
-void block_scatter_matrix(int *matrix,int row,int col,int block_size,int *Bufer,int tag,int lencol){//size block
-    for(int i=0;i <block_size; i++){
-        for(int j=0;j < block_size;j++){
-            if(i==0&&j==0){
-                memcpy(Bufer,get_block(i*row,j*col,row,col,matrix,lencol),row*col*sizeof(int));
-            } 
-            else{
-                MPI_Send(get_block(i*row,j*col,row,col,matrix,lencol),row*col,MPI_INT,i*block_size + j,tag,MPI_COMM_WORLD);
-            }
-        }
-    }
-}   
+}  
 
 int get_left_index(int current_rank,int block_size){
     int row = current_rank/block_size;
@@ -148,31 +121,12 @@ void cannon(int *left,int *left_Buf,int left_r,int left_c,int *right,int *right_
         if(i != block_size - 1){//do block_size-1 times
             MPI_Sendrecv(left,left_r*left_c,MPI_INT,get_left_index(rank,block_size),102,
                  left_Buf,left_r*left_c,MPI_INT,get_right_index(rank,block_size),102,MPI_COMM_WORLD,&status);
-
         
             MPI_Sendrecv(right,right_r*right_c,MPI_INT,get_up_index(rank,block_size),103,
                     right_Buf,right_r*right_c,MPI_INT,get_down_index(rank,block_size),103,MPI_COMM_WORLD,&status);
 
             memcpy(left,left_Buf,left_r*left_c*sizeof(int));
             memcpy(right,right_Buf,right_r*right_c*sizeof(int));
-        }
-    }
-    /*
-    if(rank != 0)
-        MPI_Send(result,left_r*right_c,MPI_INT,0,104,MPI_COMM_WORLD);
-    */
-}
-
-void gather_matrix(int *result,int row,int col,int block_size,int lencol){
-    MPI_Status status;
-    int *temp = generate_space(row,col);
-    for(int i=0;i<block_size;i++){
-        for(int j=0;j<block_size;j++){
-            int temp_rank = i*block_size+j;
-            if(temp_rank != 0){
-                MPI_Recv(temp,row*col,MPI_INT,temp_rank,104,MPI_COMM_WORLD,&status);
-                Set_block(i*row,j*col,row,col,result,temp,lencol);
-            }
         }
     }
 }
@@ -195,7 +149,6 @@ void transform_matrix(int *matrix,int block_size,int row,int col,int small_row,i
                 int col = row_i%block_size;
                 row_i = ((row-col +block_size)%block_size)*block_size + col;;
             }
-            //std::cout<<row_i<<" "<<col_j<<"\n";
             matrix[row_i*small_row*small_col + col_j] = temp[i*col + j];
         }
     }
@@ -203,8 +156,19 @@ void transform_matrix(int *matrix,int block_size,int row,int col,int small_row,i
     free(temp);
 }
 
-void inverse_matrix(int *matrix,int num_process,int row,int col,int small_row,int small_col){
-
+void inverse_matrix(int *matrix,int block_size,int row,int col,int small_row,int small_col){
+    int *temp = generate_space(row,col);
+    memcpy(temp,matrix,row*col*sizeof(int));
+	int *a = temp;
+    for(int i = 0;i < block_size*block_size;i++){
+        int row_i = i/block_size;
+        int col_j = i%block_size;
+        Set_block(row_i*small_row,col_j*small_col,small_row,small_col,matrix,a,col);
+        if(i != block_size*block_size-1)
+        	a = a + small_row*small_col;
+        print_matrx(matrix,row,col);
+    }
+    free(temp);
 }
 
 int main(int argc,char** argv){
@@ -245,7 +209,7 @@ int main(int argc,char** argv){
     int matrix2_row = matrix1_col;
     int matrix2_col = COL2/block_size;
 
-    int *A = generate_space(matrix1_row,matrix1_col);//
+    int *A = generate_space(matrix1_row,matrix1_col);
     int *B = generate_space(matrix2_row,matrix2_col);
     int *C = generate_space(matrix1_row,matrix2_col);
     int *A_Buf = generate_space(matrix1_row,matrix1_col);//buffer for communication
@@ -266,22 +230,15 @@ int main(int argc,char** argv){
     //printf("process: %d scatter done\n",rank);
     //print_matrx(A,matrix1_row,matrix1_col);
     //print_matrx(B,matrix2_row,matrix2_col);
-    //MPI_Barrier(MPI_COMM_WORLD);//sync
     //printf("process: %d preprocessing done\n",rank);
     cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
-
     //printf("process: %d cannon done\n",rank);
-    //MPI_Barrier(MPI_COMM_WORLD);
     MPI_Gather(C, matrix1_row*matrix2_col, MPI_INT, result, matrix1_row*matrix2_col, MPI_INT, 0,
            MPI_COMM_WORLD);
-    //MPI_Barrier(MPI_COMM_WORLD);
     if(rank == 0){
-        //printf("begin gathering\n");
-        //Set_block(0,0,matrix1_row,matrix2_col,result,C,COL2);
-        //gather_matrix(result,matrix1_row,matrix2_col,block_size,COL2);//gathering the result
         e = MPI_Wtime();
         std::cout<<"cannon time "<<e-s<< "\n";
-        //print_matrx(result,size,matrix1_row*matrix2_col);
+        inverse_matrix(result,block_size,ROW1,COL2,matrix1_row,matrix2_col);
         if(validate(result,result1,ROW1,COL2)){
             std::cout<<"successfully compute\n";
         }
