@@ -5,10 +5,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <iostream>
-#define ROW1 1000
-#define COL1 1000
-#define ROW2 1000
-#define COL2 1000
+#define ROW1 840
+#define COL1 840
+#define ROW2 840
+#define COL2 840
 
 
 int *generate_space(int row,int col){
@@ -166,7 +166,6 @@ void inverse_matrix(int *matrix,int block_size,int row,int col,int small_row,int
         Set_block(row_i*small_row,col_j*small_col,small_row,small_col,matrix,a,col);
         if(i != block_size*block_size-1)
         	a = a + small_row*small_col;
-        print_matrx(matrix,row,col);
     }
     free(temp);
 }
@@ -238,6 +237,7 @@ int main(int argc,char** argv){
     if(rank == 0){
         e = MPI_Wtime();
         std::cout<<"cannon time "<<e-s<< "\n";
+        std::cout<<"matrix size is : "<<ROW1<<" "<<COL1<<"\n";
         inverse_matrix(result,block_size,ROW1,COL2,matrix1_row,matrix2_col);
         if(validate(result,result1,ROW1,COL2)){
             std::cout<<"successfully compute\n";
