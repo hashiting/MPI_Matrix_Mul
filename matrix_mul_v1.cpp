@@ -191,16 +191,10 @@ int main(int argc,char** argv){
         matrix2 = generate_matrix(ROW2,COL2,10);
         result = generate_space(ROW1,COL2);
         result1 = generate_space(ROW1,COL2);
-        //print_matrx(matrix1,ROW1,COL1);
-        //printf("print1 done\n");
-        //print_matrx(matrix2,ROW2,COL2);
-        //printf("print2 done\n");
         s = MPI_Wtime();
         matrix_multiple(matrix1,matrix2,result1,ROW1,COL1,COL2);//calculate time
         e = MPI_Wtime();
         std::cout<<"normal take time "<<e-s<<"\n";
-        //print_matrx(result1,ROW1,COL2);
-        //printf("print3 done\n");
     }
     
     int matrix1_row = ROW1/block_size;
@@ -226,12 +220,8 @@ int main(int argc,char** argv){
     MPI_Scatter(matrix2,matrix2_row*matrix2_col, MPI_INT, B,
             matrix2_row*matrix2_col, MPI_INT, 0, MPI_COMM_WORLD);        
 
-    //printf("process: %d scatter done\n",rank);
-    //print_matrx(A,matrix1_row,matrix1_col);
-    //print_matrx(B,matrix2_row,matrix2_col);
-    //printf("process: %d preprocessing done\n",rank);
     cannon(A,A_Buf,matrix1_row,matrix1_col,B,B_Buf,matrix2_row,matrix2_col,C,block_size,rank); // do computing and shifting
-    //printf("process: %d cannon done\n",rank);
+
     MPI_Gather(C, matrix1_row*matrix2_col, MPI_INT, result, matrix1_row*matrix2_col, MPI_INT, 0,
            MPI_COMM_WORLD);
     if(rank == 0){
