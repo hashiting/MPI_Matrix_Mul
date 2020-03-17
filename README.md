@@ -4,45 +4,50 @@ Matrix mul using MPI
 
 Dimension of matrix is 840*840:
 
-    normal time: 8.5
+    normal time: 8s
     
-    4-process:2.13
+    4-process:
+    	1 node 2.04s 
+    	4 node 1.98s
     
-    9-process:0.96
-    
-    16-process:0.558
-    
-    25-process:0.505
-    
-    36-process:0.318
-    
-    49-process:0.179
-    
-    64-process:0.20
-    
-    100-process:0.28
-    
-    144-process 0.38
-    
+    9-process:
+    	1 node:0.9697
+    	2 node: 0.9689 
+    	3 node:0.966851
+    	4 node: 0.9354
+    	9-node: 0.8923s
 
 
-Dimension of matrix is 1000 * 1000:
 
-    normal: 15.2s
-    
-    4-process:3.46s
-    
-    16-process: 0.93s
-    
-    25-process: 0.608s
-    
-    64-process: 0.381s
-    
-    100-process: 0.267s
-    
-    400-process: 0.647s
-    
-    
-    
+    16-process:
+    	8-node: 0.54s
+    	16-node: 0.501s
 
-It has strong scalility.
+
+​    
+    25-process:
+    	15-node: 0.3446s
+    	25-node: 0.3212s
+
+
+​    
+    36-process:
+    	18-node: 0.338s
+    	36-node: 0.23s
+    
+    49-process:
+    	49-node:0.1669
+    
+    64-process:
+    	32-node: 0.2285s
+    	64-node: 0.2318s
+    
+    100-process:
+    	50-node: 0.368s
+    	90-node: 0.27s
+    	95-node: 0.259s
+    	99-node: 0.256s
+    	
+    	
+    	
+
